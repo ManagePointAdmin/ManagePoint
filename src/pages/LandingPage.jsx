@@ -7,6 +7,16 @@ import {
     MessageSquare, Star
 } from "lucide-react";
 
+/** Map the gradient string to a matching solid icon color */
+const gradientToIconColor = {
+    "from-blue-500 to-blue-600": "text-blue-600 dark:text-blue-400",
+    "from-violet-500 to-violet-600": "text-violet-600 dark:text-violet-400",
+    "from-emerald-500 to-emerald-600": "text-emerald-600 dark:text-emerald-400",
+    "from-orange-500 to-orange-600": "text-orange-600 dark:text-orange-400",
+    "from-rose-500 to-rose-600": "text-rose-600 dark:text-rose-400",
+    "from-cyan-500 to-cyan-600": "text-cyan-600 dark:text-cyan-400",
+};
+
 const features = [
     {
         icon: Layers,
@@ -223,10 +233,7 @@ export default function LandingPage() {
                                 className="group p-6 rounded-2xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-blue-300 dark:hover:border-blue-500/40 hover:shadow-lg hover:shadow-blue-500/5 transition-all duration-200"
                             >
                                 <div className={`inline-flex p-3 rounded-xl ${feature.bg} mb-4`}>
-                                    <feature.icon className={`size-6 bg-gradient-to-br ${feature.color} bg-clip-text`} style={{ color: 'transparent', filter: 'none' }} />
-                                    <feature.icon className={`size-6 hidden`} />
-                                    {/* simple icon with color */}
-                                    <feature.icon className={`size-6 text-blue-600 dark:text-blue-400 -ml-6`} />
+                                    <feature.icon className={`size-6 ${gradientToIconColor[feature.color] || "text-blue-600 dark:text-blue-400"}`} />
                                 </div>
                                 <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2">{feature.title}</h3>
                                 <p className="text-sm text-gray-600 dark:text-zinc-400 leading-relaxed">{feature.description}</p>

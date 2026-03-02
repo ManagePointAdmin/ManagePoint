@@ -18,19 +18,27 @@ const Layout = () => {
     }, [])
 
     if (loading) return (
-        <div className='flex items-center justify-center h-screen bg-white dark:bg-zinc-950'>
-            <Loader2Icon className="size-7 text-blue-500 animate-spin" />
+        <div className='flex flex-col items-center justify-center h-screen gap-4 bg-white dark:bg-zinc-950'>
+            <div className="relative">
+                <div className="size-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-xl shadow-blue-500/30">
+                    <img src="/favicon.ico" alt="ManagePoint" className="size-8 rounded-lg" />
+                </div>
+                <div className="absolute -bottom-1 -right-1 p-1 bg-white dark:bg-zinc-950 rounded-full">
+                    <Loader2Icon className="size-4 text-blue-500 animate-spin" />
+                </div>
+            </div>
+            <p className="text-sm text-zinc-400 dark:text-zinc-500 animate-pulse">Loading workspace…</p>
         </div>
     )
 
     return (
-        <div className="flex bg-white dark:bg-zinc-950 text-gray-900 dark:text-slate-100">
+        <div className="flex bg-gray-50 dark:bg-zinc-950 text-gray-900 dark:text-slate-100 h-screen overflow-hidden">
             <Sidebar isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} />
-            <div className="flex-1 flex flex-col h-screen">
+            <div className="flex-1 flex flex-col min-w-0 h-screen">
                 <Navbar isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} />
-                <div className="flex-1 h-full p-6 xl:p-10 xl:px-16 overflow-y-scroll">
+                <main className="flex-1 overflow-y-auto p-6 xl:p-10 xl:px-16 animate-fade-in">
                     <Outlet />
-                </div>
+                </main>
             </div>
         </div>
     )
