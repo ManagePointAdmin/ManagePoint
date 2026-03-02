@@ -1,11 +1,9 @@
 [build]
-  command = "npm install && npx vite build"
+  command = "npm run build"
   publish = "dist"
 
 [build.environment]
   NODE_VERSION = "18"
-  NPM_FLAGS = "--include=dev"
-  CI = "false"
 
 # SPA routing — send all paths to index.html
 [[redirects]]
