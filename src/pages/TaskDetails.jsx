@@ -23,12 +23,24 @@ const TaskDetails = () => {
 
     const fetchComments = async () => {
         if (!taskId) return;
-        const { data } = await supabase
+        const { data: commentData } = await supabase
             .from("comments")
-            .select("*, user:profiles(*)")
+            .select("*")
             .eq("task_id", taskId)
             .order("created_at", { ascending: true });
-        if (data) setComments(data);
+
+        if (!commentData) return;
+
+        // Fetch profiles separately for each unique user
+        const userIds = [...new Set(commentData.map((c) => c.user_id))];
+        const { data: profiles } = await supabase
+            .from("profiles")
+            .select("*")
+            .in("id", userIds);
+
+        const profileMap = Object.fromEntries((profiles || []).map((p) => [p.id, p]));
+        const merged = commentData.map((c) => ({ ...c, user: profileMap[c.user_id] || null }));
+        setComments(merged);
     };
 
     const fetchTaskDetails = async () => {
@@ -48,17 +60,18 @@ const TaskDetails = () => {
 
     const handleAddComment = async () => {
         if (!newComment.trim() || !user) return;
-
         try {
             const { data, error } = await supabase
                 .from("comments")
                 .insert({ task_id: taskId, user_id: user.id, content: newComment.trim() })
-                .select("*, user:profiles(*)")
+                .select("*")
                 .single();
-
             if (error) throw error;
 
-            setComments((prev) => [...prev, data]);
+            // Attach the current user's profile to the new comment
+            const { data: profile } = await supabase
+                .from("profiles").select("*").eq("id", user.id).single();
+            setComments((prev) => [...prev, { ...data, user: profile || null }]);
             setNewComment("");
             toast.success("Comment added.");
         } catch (error) {

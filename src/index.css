@@ -1,5 +1,30 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@100..900&display=swap');
 @import "tailwindcss";
+
+/* ──────────────────────────────────────────────────────── */
+/* Theme overrides: remap blue → indigo for a softer,       */
+/* eye-friendly, industrial-standard accent                 */
+/* ──────────────────────────────────────────────────────── */
+@theme {
+    /* Replace all blue-* utilities with indigo shades */
+    --color-blue-50: #eef2ff;
+    --color-blue-100: #e0e7ff;
+    --color-blue-200: #c7d2fe;
+    --color-blue-300: #a5b4fc;
+    --color-blue-400: #818cf8;
+    --color-blue-500: #6366f1;
+    --color-blue-600: #4f46e5;
+    --color-blue-700: #4338ca;
+    --color-blue-800: #3730a3;
+    --color-blue-900: #312e81;
+    --color-blue-950: #1e1b4b;
+
+    /* Warmer, less-harsh dark backgrounds (slate instead of zinc) */
+    --color-zinc-900: #1a1d2e;
+    --color-zinc-950: #0f111a;
+    --color-zinc-800: #252840;
+    --color-zinc-700: #363a5a;
+}
 
 html {
     font-size: 16.5px;
@@ -9,7 +34,7 @@ html {
 *,
 *::before,
 *::after {
-    font-family: 'Outfit', sans-serif;
+    font-family: 'Inter', 'Outfit', sans-serif;
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
@@ -63,23 +88,7 @@ html {
         filter: invert(100%);
     }
 
-    /* ── Custom checkbox ── */
-    input[type="checkbox"] {
-        appearance: none;
-        background-color: #d1d5db;
-        border-radius: 9999px;
-        cursor: pointer;
-        width: 1rem;
-        height: 1rem;
-    }
-
-    .dark input[type="checkbox"] {
-        background-color: #3f3f46;
-    }
-
-    input[type="checkbox"]:checked {
-        background-color: #3b82f6;
-    }
+    /* ── Custom checkbox — removed global override to avoid conflicts with JS-controlled checkboxes ── */
 
     /* ── Select dark mode base ── */
     select {
@@ -216,7 +225,7 @@ html {
 /* Gradient text helper                                    */
 /* ──────────────────────────────────────────────────────── */
 .gradient-text {
-    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;

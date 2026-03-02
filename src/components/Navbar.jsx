@@ -150,8 +150,8 @@ const Navbar = ({ setIsSidebarOpen }) => {
                                                 className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-zinc-800 transition text-left"
                                             >
                                                 <span className={`text-xs px-1.5 py-0.5 rounded-md font-medium flex-shrink-0 ${result.type === 'project'
-                                                        ? 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400'
-                                                        : 'bg-violet-100 dark:bg-violet-500/20 text-violet-700 dark:text-violet-400'
+                                                    ? 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400'
+                                                    : 'bg-violet-100 dark:bg-violet-500/20 text-violet-700 dark:text-violet-400'
                                                     }`}>
                                                     {result.type === 'project' ? 'Project' : 'Task'}
                                                 </span>
@@ -194,8 +194,8 @@ const Navbar = ({ setIsSidebarOpen }) => {
                             onClick={() => setDropdownOpen((o) => !o)}
                             className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl hover:bg-gray-100 dark:hover:bg-zinc-800 transition"
                         >
-                            {currentUser?.image ? (
-                                <img src={currentUser.image} alt={currentUser.name} className="size-7 rounded-full object-cover ring-2 ring-blue-500/30" />
+                            {currentUser?.avatar_url ? (
+                                <img src={currentUser.avatar_url} alt={currentUser.name} className="size-7 rounded-full object-cover ring-2 ring-blue-500/30" />
                             ) : (
                                 <div className={`size-7 rounded-full ${avatarColor} flex items-center justify-center text-white text-xs font-bold ring-2 ring-offset-1 ring-offset-white dark:ring-offset-zinc-900 ring-blue-500/20`}>
                                     {currentUser?.name?.[0]?.toUpperCase() ?? 'U'}

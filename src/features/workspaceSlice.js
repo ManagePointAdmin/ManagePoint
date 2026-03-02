@@ -177,6 +177,18 @@ const workspaceSlice = createSlice({
                     : w
             );
         },
+        deleteProject: (state, action) => {
+            // action.payload = projectId
+            if (!state.currentWorkspace) return;
+            state.currentWorkspace.projects = state.currentWorkspace.projects.filter(
+                (p) => p.id !== action.payload
+            );
+            state.workspaces = state.workspaces.map((w) =>
+                w.id === state.currentWorkspace.id
+                    ? { ...w, projects: w.projects.filter((p) => p.id !== action.payload) }
+                    : w
+            );
+        },
         addTask: (state, action) => {
             if (!state.currentWorkspace) return;
             state.currentWorkspace.projects = state.currentWorkspace.projects.map((p) => {
@@ -292,6 +304,7 @@ export const {
     setCurrentWorkspace,
     addProject,
     updateProject,
+    deleteProject,
     addTask,
     updateTask,
     deleteTask,

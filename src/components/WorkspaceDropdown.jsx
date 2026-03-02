@@ -3,7 +3,6 @@ import { ChevronDown, Check, Plus } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { setCurrentWorkspace } from "../features/workspaceSlice";
 import { useNavigate } from "react-router-dom";
-import { assets } from "../assets/assets";
 import CreateWorkspaceDialog from "./CreateWorkspaceDialog";
 
 function WorkspaceDropdown() {
@@ -40,9 +39,11 @@ function WorkspaceDropdown() {
                 <button onClick={() => setIsOpen(prev => !prev)} className="w-full flex items-center justify-between p-3 h-auto text-left rounded hover:bg-gray-100 dark:hover:bg-zinc-800" >
                     <div className="flex items-center gap-3">
                         {currentWorkspace?.image_url ? (
-                            <img src={currentWorkspace.image_url} alt={currentWorkspace.name} className="w-8 h-8 rounded shadow" />
+                            <img src={currentWorkspace.image_url} alt={currentWorkspace.name} className="w-8 h-8 rounded-lg shadow object-cover flex-shrink-0" />
                         ) : (
-                            <img src={assets.workspace_img_default} alt="workspace" className="w-8 h-8 rounded shadow" />
+                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white text-sm font-bold shadow flex-shrink-0">
+                                {currentWorkspace?.name?.[0]?.toUpperCase() || "W"}
+                            </div>
                         )}
                         <div className="min-w-0 flex-1">
                             <p className="font-semibold text-gray-800 dark:text-white text-sm truncate">

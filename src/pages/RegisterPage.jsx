@@ -96,8 +96,8 @@ const RegisterPage = () => {
 
                     {/* Header */}
                     <div className="mb-7 text-center">
-                        <div className="size-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 mx-auto mb-4 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                            <img src="/favicon.ico" alt="ManagePoint" className="size-8 rounded-lg" />
+                        <div className="size-16 mx-auto mb-4 flex items-center justify-center">
+                            <img src="/favicon.ico" alt="ManagePoint" className="size-16 drop-shadow-lg" style={{ imageRendering: 'auto' }} />
                         </div>
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Create an account</h1>
                         <p className="text-sm text-gray-500 dark:text-zinc-400">Join your workspace today</p>

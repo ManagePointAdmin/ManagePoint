@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Calendar as CalendarIcon, X } from "lucide-react";
+import { CalendarIcon, X, Loader2 } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
+import { createPortal } from "react-dom";
 import { format } from "date-fns";
 import { supabase } from "../lib/supabase";
 import { addTask } from "../features/workspaceSlice";
@@ -15,20 +16,21 @@ export default function CreateTaskDialog({ showCreateTask, setShowCreateTask, pr
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
-        title: "",
-        description: "",
-        type: "TASK",
-        status: "TODO",
-        priority: "MEDIUM",
-        assigneeId: "",
-        due_date: "",
+        title: "", description: "", type: "TASK", status: "TODO",
+        priority: "MEDIUM", assigneeId: "", due_date: "",
     });
+
+    const set = (key, val) => setFormData((prev) => ({ ...prev, [key]: val }));
+
+    const handleClose = () => {
+        setShowCreateTask(false);
+        setFormData({ title: "", description: "", type: "TASK", status: "TODO", priority: "MEDIUM", assigneeId: "", due_date: "" });
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!projectId || !currentUser) return;
         setIsSubmitting(true);
-
         try {
             const { data: task, error } = await supabase
                 .from("tasks")
@@ -42,33 +44,17 @@ export default function CreateTaskDialog({ showCreateTask, setShowCreateTask, pr
                     assignee_id: formData.assigneeId || null,
                     due_date: formData.due_date || null,
                 })
-                .select()
-                .single();
-
+                .select().single();
             if (error) throw error;
 
-            // Fetch assignee profile if set
             let assignee = null;
             if (formData.assigneeId) {
-                const { data: profile } = await supabase
-                    .from("profiles")
-                    .select("*")
-                    .eq("id", formData.assigneeId)
-                    .single();
+                const { data: profile } = await supabase.from("profiles").select("*").eq("id", formData.assigneeId).single();
                 assignee = profile;
             }
-
-            dispatch(addTask({
-                ...task,
-                projectId: task.project_id,
-                assigneeId: task.assignee_id,
-                assignee,
-                comments: [],
-            }));
-
+            dispatch(addTask({ ...task, projectId: task.project_id, assigneeId: task.assignee_id, assignee, comments: [] }));
             toast.success("Task created!");
-            setShowCreateTask(false);
-            setFormData({ title: "", description: "", type: "TASK", status: "TODO", priority: "MEDIUM", assigneeId: "", due_date: "" });
+            handleClose();
         } catch (err) {
             toast.error(err.message || "Failed to create task");
         } finally {
@@ -76,99 +62,119 @@ export default function CreateTaskDialog({ showCreateTask, setShowCreateTask, pr
         }
     };
 
-    return showCreateTask ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 dark:bg-black/60 backdrop-blur">
-            <div className="bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg shadow-lg w-full max-w-md p-6 text-zinc-900 dark:text-white">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold">Create New Task</h2>
-                    <button type="button" onClick={() => setShowCreateTask(false)} className="text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200">
-                        <X className="size-5" />
-                    </button>
+    if (!showCreateTask) return null;
+
+    const inputCls = "w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition";
+
+    return createPortal(
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 dark:bg-black/75 backdrop-blur-sm">
+            <div className="flex min-h-full items-center justify-center py-4 px-4">
+                <div className="relative w-full max-w-2xl bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
+
+                    {/* Header */}
+                    <div className="flex items-start justify-between px-7 pt-6 pb-1">
+                        <div>
+                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Create New Task</h2>
+                            {project?.name && (
+                                <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">
+                                    Project: <span className="text-blue-600 dark:text-blue-400">{project.name}</span>
+                                </p>
+                            )}
+                        </div>
+                        <button onClick={handleClose} className="size-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-800 transition mt-0.5">
+                            <X className="size-4" />
+                        </button>
+                    </div>
+
+                    {/* Form */}
+                    <form onSubmit={handleSubmit} className="px-7 pb-7 pt-5 space-y-5 max-h-[75vh] overflow-y-auto">
+
+                        {/* Title */}
+                        <div>
+                            <label className="block text-sm text-gray-700 dark:text-zinc-300 mb-1.5">
+                                Task title <span className="text-red-500">*</span>
+                            </label>
+                            <input value={formData.title} onChange={(e) => set("title", e.target.value)} placeholder="What needs to be done?" className={inputCls} required autoFocus maxLength={120} />
+                        </div>
+
+                        {/* Description */}
+                        <div>
+                            <label className="block text-sm text-gray-700 dark:text-zinc-300 mb-1.5">
+                                Description <span className="text-gray-400 dark:text-zinc-500">(optional)</span>
+                            </label>
+                            <textarea value={formData.description} onChange={(e) => set("description", e.target.value)} placeholder="Add more details…" rows={3} className={`${inputCls} resize-none`} />
+                        </div>
+
+                        {/* Type & Priority */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-sm text-gray-700 dark:text-zinc-300 mb-1.5">Type</label>
+                                <select value={formData.type} onChange={(e) => set("type", e.target.value)} className={inputCls}>
+                                    <option value="TASK">Task</option>
+                                    <option value="BUG">Bug</option>
+                                    <option value="FEATURE">Feature</option>
+                                    <option value="IMPROVEMENT">Improvement</option>
+                                    <option value="OTHER">Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-700 dark:text-zinc-300 mb-1.5">Priority</label>
+                                <select value={formData.priority} onChange={(e) => set("priority", e.target.value)} className={inputCls}>
+                                    <option value="LOW">Low</option>
+                                    <option value="MEDIUM">Medium</option>
+                                    <option value="HIGH">High</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Assignee & Status */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-sm text-gray-700 dark:text-zinc-300 mb-1.5">Assignee</label>
+                                <select value={formData.assigneeId} onChange={(e) => set("assigneeId", e.target.value)} className={inputCls}>
+                                    <option value="">Unassigned</option>
+                                    {teamMembers.map((m) => (
+                                        <option key={m?.user?.id} value={m?.user?.id}>
+                                            {m?.user?.name || m?.user?.email}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-700 dark:text-zinc-300 mb-1.5">Status</label>
+                                <select value={formData.status} onChange={(e) => set("status", e.target.value)} className={inputCls}>
+                                    <option value="TODO">To Do</option>
+                                    <option value="IN_PROGRESS">In Progress</option>
+                                    <option value="DONE">Done</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Due Date */}
+                        <div>
+                            <label className="block text-sm text-gray-700 dark:text-zinc-300 mb-1.5">
+                                Due date <span className="text-gray-400 dark:text-zinc-500">(optional)</span>
+                            </label>
+                            <input type="date" value={formData.due_date} onChange={(e) => set("due_date", e.target.value)} min={new Date().toISOString().split("T")[0]} className={inputCls} />
+                            {formData.due_date && (
+                                <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">
+                                    {format(new Date(formData.due_date + "T12:00:00"), "EEEE, MMMM d, yyyy")}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex items-center justify-end gap-3 pt-1">
+                            <button type="button" onClick={handleClose} disabled={isSubmitting} className="px-4 py-2 text-sm rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 transition">
+                                Cancel
+                            </button>
+                            <button type="submit" disabled={isSubmitting || !formData.title.trim()} className="flex items-center gap-2 px-5 py-2 text-sm rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition disabled:opacity-60 disabled:cursor-not-allowed">
+                                {isSubmitting ? <><Loader2 className="size-3.5 animate-spin" /> Creating…</> : "Create Task"}
+                            </button>
+                        </div>
+                    </form>
                 </div>
-
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* Title */}
-                    <div className="space-y-1">
-                        <label className="text-sm font-medium">Title</label>
-                        <input value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="Task title" className="w-full rounded dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-zinc-900 dark:text-zinc-200 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
-                    </div>
-
-                    {/* Description */}
-                    <div className="space-y-1">
-                        <label className="text-sm font-medium">Description</label>
-                        <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Describe the task" className="w-full rounded dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-zinc-900 dark:text-zinc-200 text-sm mt-1 h-24 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                    </div>
-
-                    {/* Type & Priority */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <label className="text-sm font-medium">Type</label>
-                            <select value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })} className="w-full rounded dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-zinc-900 dark:text-zinc-200 text-sm mt-1">
-                                <option value="BUG">Bug</option>
-                                <option value="FEATURE">Feature</option>
-                                <option value="TASK">Task</option>
-                                <option value="IMPROVEMENT">Improvement</option>
-                                <option value="OTHER">Other</option>
-                            </select>
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-sm font-medium">Priority</label>
-                            <select value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })} className="w-full rounded dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-zinc-900 dark:text-zinc-200 text-sm mt-1">
-                                <option value="LOW">Low</option>
-                                <option value="MEDIUM">Medium</option>
-                                <option value="HIGH">High</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    {/* Assignee and Status */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <label className="text-sm font-medium">Assignee</label>
-                            <select value={formData.assigneeId} onChange={(e) => setFormData({ ...formData, assigneeId: e.target.value })} className="w-full rounded dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-zinc-900 dark:text-zinc-200 text-sm mt-1">
-                                <option value="">Unassigned</option>
-                                {teamMembers.map((member) => (
-                                    <option key={member?.user?.id} value={member?.user?.id}>
-                                        {member?.user?.name || member?.user?.email}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-sm font-medium">Status</label>
-                            <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="w-full rounded dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-zinc-900 dark:text-zinc-200 text-sm mt-1">
-                                <option value="TODO">To Do</option>
-                                <option value="IN_PROGRESS">In Progress</option>
-                                <option value="DONE">Done</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    {/* Due Date */}
-                    <div className="space-y-1">
-                        <label className="text-sm font-medium">Due Date</label>
-                        <div className="flex items-center gap-2">
-                            <CalendarIcon className="size-5 text-zinc-500 dark:text-zinc-400" />
-                            <input type="date" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} min={new Date().toISOString().split('T')[0]} className="w-full rounded dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-zinc-900 dark:text-zinc-200 text-sm mt-1" />
-                        </div>
-                        {formData.due_date && (
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                {format(new Date(formData.due_date), "PPP")}
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Footer */}
-                    <div className="flex justify-end gap-2 pt-2">
-                        <button type="button" onClick={() => setShowCreateTask(false)} className="rounded border border-zinc-300 dark:border-zinc-700 px-5 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">
-                            Cancel
-                        </button>
-                        <button type="submit" disabled={isSubmitting} className="rounded px-5 py-2 text-sm bg-gradient-to-br from-blue-500 to-blue-600 hover:opacity-90 text-white dark:text-zinc-200 transition disabled:opacity-50">
-                            {isSubmitting ? "Creating..." : "Create Task"}
-                        </button>
-                    </div>
-                </form>
             </div>
         </div>
-    ) : null;
+        , document.body);
 }

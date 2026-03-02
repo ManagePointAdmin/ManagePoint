@@ -1,13 +1,16 @@
-import { Plus, Save } from "lucide-react";
+import { Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import AddProjectMember from "./AddProjectMember";
+import ConfirmDialog from "./ConfirmDialog";
 import { supabase } from "../lib/supabase";
-import { updateProject } from "../features/workspaceSlice";
+import { updateProject, deleteProject } from "../features/workspaceSlice";
 import toast from "react-hot-toast";
 
 export default function ProjectSettings({ project }) {
     const dispatch = useDispatch();
+    const navigate = useNavigate();
 
     const [formData, setFormData] = useState({
         name: "",
@@ -21,6 +24,8 @@ export default function ProjectSettings({ project }) {
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -51,6 +56,23 @@ export default function ProjectSettings({ project }) {
             toast.error(err.message || "Failed to save project");
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handleDeleteProject = async () => {
+        if (!project?.id) return;
+        setIsDeleting(true);
+        try {
+            const { error } = await supabase.from("projects").delete().eq("id", project.id);
+            if (error) throw error;
+            dispatch(deleteProject(project.id));
+            toast.success("Project deleted.");
+            navigate("/dashboard/projects");
+        } catch (err) {
+            toast.error(err.message || "Failed to delete project");
+        } finally {
+            setIsDeleting(false);
+            setShowDeleteConfirm(false);
         }
     };
 
@@ -166,6 +188,33 @@ export default function ProjectSettings({ project }) {
                     )}
                 </div>
             </div>
+            {/* ── Danger Zone ────────────────────────────────── */}
+            <div className="lg:col-span-2">
+                <div className="rounded-lg border border-red-200 dark:border-red-900/50 p-6 bg-red-50 dark:bg-red-950/20">
+                    <h2 className="text-base font-semibold text-red-700 dark:text-red-400 mb-1">Danger Zone</h2>
+                    <p className="text-sm text-red-600/80 dark:text-red-400/70 mb-4">
+                        Once you delete a project, all its tasks and data are permanently removed. This action cannot be undone.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-red-600 hover:bg-red-700 text-white transition"
+                    >
+                        <Trash2 className="size-4" /> Delete this project
+                    </button>
+                </div>
+            </div>
+
+            <ConfirmDialog
+                isOpen={showDeleteConfirm}
+                title="Delete Project?"
+                message={`"${project?.name}" and all its tasks will be permanently deleted. This cannot be undone.`}
+                confirmLabel="Yes, delete project"
+                cancelLabel="Cancel"
+                onConfirm={handleDeleteProject}
+                onCancel={() => setShowDeleteConfirm(false)}
+                loading={isDeleting}
+            />
         </div>
     );
 }

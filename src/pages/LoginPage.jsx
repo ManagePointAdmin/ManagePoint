@@ -5,15 +5,22 @@ import { Eye, EyeOff, LogIn, Loader2, AlertCircle } from "lucide-react";
 import { loginUser, clearError } from "../features/authSlice";
 import toast from "react-hot-toast";
 
+const REMEMBER_EMAIL_KEY = "mp_remember_email";
+const REMEMBER_ME_KEY = "mp_remember_me";
+
 const LoginPage = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { loading, error, isAuthenticated } = useSelector((state) => state.auth);
 
-    const [formData, setFormData] = useState({ email: "", password: "" });
+    const savedEmail = localStorage.getItem(REMEMBER_EMAIL_KEY) || "";
+    const savedRemember = localStorage.getItem(REMEMBER_ME_KEY) === "true";
+
+    const [formData, setFormData] = useState({ email: savedEmail, password: "" });
     const [showPassword, setShowPassword] = useState(false);
     const [fieldErrors, setFieldErrors] = useState({});
     const [touched, setTouched] = useState({});
+    const [rememberMe, setRememberMe] = useState(savedRemember);
 
     useEffect(() => {
         if (isAuthenticated) navigate("/dashboard", { replace: true });
@@ -53,6 +60,16 @@ const LoginPage = () => {
         const errs = validate(formData);
         setFieldErrors(errs);
         if (Object.keys(errs).length > 0) return;
+
+        // Persist or clear "remember me" preference
+        if (rememberMe) {
+            localStorage.setItem(REMEMBER_EMAIL_KEY, formData.email);
+            localStorage.setItem(REMEMBER_ME_KEY, "true");
+        } else {
+            localStorage.removeItem(REMEMBER_EMAIL_KEY);
+            localStorage.removeItem(REMEMBER_ME_KEY);
+        }
+
         dispatch(loginUser({ email: formData.email, password: formData.password }));
     };
 
@@ -76,8 +93,8 @@ const LoginPage = () => {
 
                     {/* Header */}
                     <div className="mb-8 text-center">
-                        <div className="size-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 mx-auto mb-4 flex items-center justify-center shadow-lg shadow-blue-500/30">
-                            <img src="/favicon.ico" alt="ManagePoint" className="size-8 rounded-lg" />
+                        <div className="size-16 mx-auto mb-4 flex items-center justify-center">
+                            <img src="/favicon.ico" alt="ManagePoint" className="size-16 drop-shadow-lg" style={{ imageRendering: 'auto' }} />
                         </div>
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Welcome back</h1>
                         <p className="text-sm text-gray-500 dark:text-zinc-400">Sign in to your workspace</p>
@@ -134,6 +151,40 @@ const LoginPage = () => {
                                     <AlertCircle className="size-3 flex-shrink-0" /> {fieldErrors.password}
                                 </p>
                             )}
+                        </div>
+
+                        {/* Remember Me */}
+                        <div className="flex items-center justify-between">
+                            <button
+                                type="button"
+                                onClick={() => setRememberMe((prev) => !prev)}
+                                className="flex items-center gap-2 cursor-pointer select-none group"
+                            >
+                                {/* Custom checkbox box */}
+                                <span
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        width: '1rem',
+                                        height: '1rem',
+                                        borderRadius: '4px',
+                                        border: rememberMe ? '2px solid #3b82f6' : '2px solid #d1d5db',
+                                        backgroundColor: rememberMe ? '#3b82f6' : 'transparent',
+                                        flexShrink: 0,
+                                        transition: 'all 0.15s ease',
+                                    }}
+                                >
+                                    {rememberMe && (
+                                        <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                                            <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                                        </svg>
+                                    )}
+                                </span>
+                                <span className="text-sm text-gray-600 dark:text-zinc-300 group-hover:text-gray-900 dark:group-hover:text-white transition">
+                                    Remember me
+                                </span>
+                            </button>
                         </div>
 
                         {/* Submit */}

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { AlertTriangle, X } from "lucide-react";
+import { createPortal } from "react-dom";
 
 /**
  * Reusable confirmation dialog for destructive actions.
@@ -34,7 +35,7 @@ const ConfirmDialog = ({
 
     if (!isOpen) return null;
 
-    return (
+    return createPortal(
         <div
             className="fixed inset-0 z-[200] flex items-center justify-center p-4 animate-fade-in"
             onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel(); }}
@@ -43,7 +44,7 @@ const ConfirmDialog = ({
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
             {/* Dialog */}
-            <div className="relative w-full max-w-sm bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-2xl shadow-2xl animate-scale-in p-6">
+            <div className="relative w-full max-w-sm bg-white/85 dark:bg-zinc-900/85 backdrop-blur-2xl border border-white/40 dark:border-zinc-700/60 rounded-2xl shadow-2xl shadow-black/20 dark:shadow-black/50 animate-scale-in p-6">
                 {/* Close button */}
                 <button
                     onClick={onCancel}
@@ -82,7 +83,7 @@ const ConfirmDialog = ({
                 </div>
             </div>
         </div>
-    );
+        , document.body);
 };
 
 export default ConfirmDialog;

@@ -26,13 +26,18 @@ export const loginUser = createAsyncThunk(
                 id: data.user.id,
                 name: profile?.name || data.user.user_metadata?.name || email.split("@")[0],
                 email: data.user.email,
-                avatar_url: profile?.avatar_url || null,
+                avatar_url: profile?.image_url || null,
             };
 
             localStorage.setItem("auth_user", JSON.stringify(user));
             return user;
         } catch (err) {
-            return rejectWithValue(err?.message || "Network error — please check your connection.");
+            console.error('[loginUser] Caught error:', err);
+            // TypeError: Failed to fetch = network-level error (no internet, CORS, or server down)
+            const msg = (err instanceof TypeError && err.message === 'Failed to fetch')
+                ? 'Cannot reach the server. Check your internet connection or try again in a moment.'
+                : (err?.message || 'Network error — please check your connection.');
+            return rejectWithValue(msg);
         }
     }
 );
@@ -121,6 +126,50 @@ export const updateProfile = createAsyncThunk(
     }
 );
 
+export const uploadProfileImage = createAsyncThunk(
+    "auth/uploadProfileImage",
+    async ({ userId, file }, { rejectWithValue }) => {
+        try {
+            // ── Resize + encode image to base64 data URL (max 256×256) ──────────
+            const dataUrl = await new Promise((resolve, reject) => {
+                const img = new Image();
+                const objectUrl = URL.createObjectURL(file);
+                img.onload = () => {
+                    const MAX = 256;
+                    const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.round(img.width * scale);
+                    canvas.height = Math.round(img.height * scale);
+                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                    URL.revokeObjectURL(objectUrl);
+                    resolve(canvas.toDataURL('image/jpeg', 0.82));
+                };
+                img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Image load failed')); };
+                img.src = objectUrl;
+            });
+
+            // ── Save data URL in the profiles table ───────────────────────────
+            const { error: dbErr } = await supabase
+                .from('profiles')
+                .update({ image_url: dataUrl })
+                .eq('id', userId);
+            if (dbErr) return rejectWithValue(dbErr.message);
+
+            // ── Persist in localStorage so Navbar updates immediately ─────────
+            const stored = localStorage.getItem('auth_user');
+            if (stored) {
+                const user = JSON.parse(stored);
+                user.avatar_url = dataUrl;
+                localStorage.setItem('auth_user', JSON.stringify(user));
+            }
+
+            return { avatar_url: dataUrl };
+        } catch (err) {
+            return rejectWithValue(err?.message || 'Upload failed');
+        }
+    }
+);
+
 // ─── Slice ────────────────────────────────────────────────────────────────────
 
 const authSlice = createSlice({
@@ -135,6 +184,11 @@ const authSlice = createSlice({
     reducers: {
         clearError: (state) => {
             state.error = null;
+        },
+        updateCurrentUserAvatar: (state, action) => {
+            if (state.currentUser) {
+                state.currentUser.avatar_url = action.payload;
+            }
         },
     },
     extraReducers: (builder) => {
@@ -193,8 +247,19 @@ const authSlice = createSlice({
                 }
             })
             .addCase(updateProfile.rejected, (state) => { state.loading = false; });
+
+        // uploadProfileImage
+        builder
+            .addCase(uploadProfileImage.pending, (state) => { state.loading = true; })
+            .addCase(uploadProfileImage.fulfilled, (state, action) => {
+                state.loading = false;
+                if (state.currentUser) {
+                    state.currentUser.avatar_url = action.payload.avatar_url;
+                }
+            })
+            .addCase(uploadProfileImage.rejected, (state) => { state.loading = false; });
     },
 });
 
-export const { clearError } = authSlice.actions;
+export const { clearError, updateCurrentUserAvatar } = authSlice.actions;
 export default authSlice.reducer;
