@@ -46,17 +46,6 @@ const LoginPage = () => {
         const updated = { ...formData, [field]: value };
         setFormData(updated);
         if (touched[field]) setFieldErrors(validate(updated));
-
-        if (field === "email") {
-            const atIndex = value.indexOf("@");
-            if (atIndex !== -1 && !value.slice(atIndex).includes(".")) {
-                const afterAt = value.slice(atIndex + 1);
-                const domains = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com"];
-                setEmailSuggestions(domains.filter(d => d.startsWith(afterAt)));
-            } else {
-                setEmailSuggestions([]);
-            }
-        }
     };;
 
     const handleBlur = (field) => {
@@ -122,29 +111,11 @@ const LoginPage = () => {
                                     type="email"
                                     value={formData.email}
                                     onChange={(e) => handleChange("email", e.target.value)}
-                                    onBlur={() => { handleBlur("email"); setTimeout(() => setEmailSuggestions([]), 200); }}
+                                    onBlur={() => handleBlur("email")}
                                     placeholder="you@example.com"
-                                    autoComplete="email"
+                                    autoComplete="off"
                                     className={`${inputClass("email")} relative z-10`}
                                 />
-                                {emailSuggestions.length > 0 && (
-                                    <ul className="absolute z-20 w-full bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl mt-1 shadow-lg py-1 max-h-40 overflow-y-auto">
-                                        {emailSuggestions.map((dom) => (
-                                            <li 
-                                                key={dom} 
-                                                onClick={() => {
-                                                    const atIndex = formData.email.indexOf('@');
-                                                    const base = formData.email.slice(0, atIndex + 1);
-                                                    setFormData({ ...formData, email: base + dom });
-                                                    setEmailSuggestions([]);
-                                                }}
-                                                className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-zinc-700 cursor-pointer text-sm text-gray-700 dark:text-zinc-300 transition-colors"
-                                            >
-                                                {formData.email.slice(0, formData.email.indexOf('@') + 1)}{dom}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
                             </div>
                             {fieldErrors.email && touched.email && (
                                 <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
