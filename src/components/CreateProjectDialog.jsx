@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { XIcon } from "lucide-react";
+import { XIcon, ChevronDown } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { createPortal } from "react-dom";
 import { supabase } from "../lib/supabase";
@@ -21,6 +21,7 @@ const CreateProjectDialog = ({ isDialogOpen, setIsDialogOpen }) => {
         team_lead: "",
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLeadOpen, setIsLeadOpen] = useState(false);
 
     const handleClose = () => {
         setIsDialogOpen(false);
@@ -95,7 +96,7 @@ const CreateProjectDialog = ({ isDialogOpen, setIsDialogOpen }) => {
                 <div className="relative w-full max-w-2xl flex flex-col bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl max-h-[90vh] overflow-hidden">
 
                     {/* ── Header (never scrolls away) ─────────────── */}
-                    <div className="flex items-center justify-between px-7 py-5 border-b border-gray-100 dark:border-zinc-800 flex-shrink-0">
+                    <div className="flex items-center justify-between px-6 py-3.5 border-b border-gray-100 dark:border-zinc-800 flex-shrink-0">
                         <div>
                             <h2 className="text-base font-semibold text-gray-900 dark:text-white">Create New Project</h2>
                             {currentWorkspace && (
@@ -113,24 +114,24 @@ const CreateProjectDialog = ({ isDialogOpen, setIsDialogOpen }) => {
                     </div>
 
                     {/* ── Scrollable form body ─────────────────────── */}
-                    <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-7 py-6 space-y-5">
+                    <form onSubmit={handleSubmit} className={`flex-1 overflow-y-auto px-6 pt-4 space-y-3 ${isLeadOpen ? "pb-40" : "pb-4"}`}>
 
                         {/* Project Name */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">Project name <span className="text-red-500">*</span></label>
-                            <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Enter project name" className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition" required />
+                            <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Project name <span className="text-red-500">*</span></label>
+                            <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="" className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition" required />
                         </div>
 
                         {/* Description */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">Description <span className="text-gray-400 dark:text-zinc-500 font-normal">(optional)</span></label>
-                            <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Describe your project" className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 text-sm h-20 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none" />
+                            <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Description <span className="text-gray-400 dark:text-zinc-500 font-normal">(optional)</span></label>
+                            <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="" className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 text-sm h-20 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none" />
                         </div>
 
                         {/* Status & Priority */}
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">Status</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Status</label>
                                 <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
                                     <option value="PLANNING">Planning</option>
                                     <option value="ACTIVE">Active</option>
@@ -140,7 +141,7 @@ const CreateProjectDialog = ({ isDialogOpen, setIsDialogOpen }) => {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">Priority</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Priority</label>
                                 <select value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
                                     <option value="LOW">Low</option>
                                     <option value="MEDIUM">Medium</option>
@@ -152,27 +153,58 @@ const CreateProjectDialog = ({ isDialogOpen, setIsDialogOpen }) => {
                         {/* Dates */}
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">Start date</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Start date</label>
                                 <input type="date" value={formData.start_date} onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">End date</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">End date</label>
                                 <input type="date" value={formData.end_date} onChange={(e) => setFormData({ ...formData, end_date: e.target.value })} min={formData.start_date || undefined} className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition" />
                             </div>
                         </div>
 
-                        {/* Lead */}
+                                                                        {/* Lead */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">Project lead</label>
-                            <select value={formData.team_lead} onChange={(e) => setFormData({ ...formData, team_lead: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
-                                <option value="">No lead</option>
-                                {currentWorkspace?.members?.map((member) => (
-                                    <option key={member.userId} value={member.userId}>
-                                        {member.user?.name || member.user?.email}
-                                    </option>
-                                ))}
-                            </select>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Project lead</label>
+                            <div className="relative">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsLeadOpen(!isLeadOpen)}
+                                    className="w-full h-10 px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white text-sm text-left flex items-center justify-between cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                                >
+                                    <span>
+                                        {formData.team_lead 
+                                            ? (currentWorkspace?.members?.find(m => m.userId === formData.team_lead)?.user?.name || `Member (${formData.team_lead.slice(0,5)})`)
+                                            : "No lead"}
+                                    </span>
+                                    <ChevronDown className="size-4 text-gray-400" />
+                                </button>
+                                
+                                {isLeadOpen && (
+                                    <ul className="absolute z-20 w-full bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl mt-1 shadow-lg py-1 max-h-40 overflow-y-auto">
+                                        <li 
+                                            onClick={() => { setFormData({ ...formData, team_lead: "" }); setIsLeadOpen(false); }}
+                                            className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-zinc-700 cursor-pointer text-sm text-gray-700 dark:text-zinc-300"
+                                        >
+                                            No lead
+                                        </li>
+                                        {currentWorkspace?.members?.map((member) => (
+                                            <li 
+                                                key={member.userId}
+                                                onClick={() => { setFormData({ ...formData, team_lead: member.userId }); setIsLeadOpen(false); }}
+                                                className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-zinc-700 cursor-pointer text-sm text-gray-700 dark:text-zinc-300"
+                                            >
+                                                {member.user?.name || member.user?.email || `Member (${member.userId.slice(0, 5)})`}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
                         </div>
+
+
+                        
+
+                        
 
                         {/* Footer inside form */}
                         <div className="flex items-center justify-end gap-3 pt-1">

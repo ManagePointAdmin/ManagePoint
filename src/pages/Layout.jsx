@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
-import ChatBot from '../components/ChatBot'
 import { Outlet } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { loadTheme } from '../features/themeSlice'
@@ -41,7 +40,6 @@ const Layout = () => {
                     <Outlet />
                 </main>
             </div>
-            <ChatBot />
         </div>
     )
 }

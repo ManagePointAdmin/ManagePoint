@@ -90,16 +90,40 @@ export const logoutUser = createAsyncThunk("auth/logoutUser", async () => {
     localStorage.removeItem("auth_user");
 });
 
+export const loginWithGoogle = createAsyncThunk(
+    "auth/loginWithGoogle",
+    async (_, { rejectWithValue }) => {
+        try {
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: "google",
+                options: {
+                    redirectTo: window.location.origin + "/dashboard",
+                },
+            });
+            if (error) return rejectWithValue(error.message);
+            return null;
+        } catch (err) {
+            return rejectWithValue(err?.message || "OAuth error");
+        }
+    }
+);
+
 export const loadAuth = createAsyncThunk("auth/loadAuth", async () => {
     try {
-        const stored = localStorage.getItem("auth_user");
-        if (stored) {
-            const { data } = await supabase.auth.getSession();
-            if (data?.session) {
-                return JSON.parse(stored);
-            }
-            localStorage.removeItem("auth_user");
+        const { data } = await supabase.auth.getSession();
+        if (data?.session) {
+            const userId = data.session.user.id;
+            const profile = await fetchProfile(userId);
+            const user = {
+                id: userId,
+                name: profile?.name || data.session.user.user_metadata?.name || data.session.user.email.split("@")[0],
+                email: data.session.user.email,
+                avatar_url: profile?.image_url || null,
+            };
+            localStorage.setItem("auth_user", JSON.stringify(user));
+            return user;
         }
+        localStorage.removeItem("auth_user");
     } catch {
         // Network error during session restore — silently ignore, user just isn't authenticated
         localStorage.removeItem("auth_user");

@@ -1,13 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CalendarIcon, X, Loader2 } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { createPortal } from "react-dom";
 import { format } from "date-fns";
 import { supabase } from "../lib/supabase";
-import { addTask } from "../features/workspaceSlice";
+import { addTask, updateTask } from "../features/workspaceSlice";
 import toast from "react-hot-toast";
 
-export default function CreateTaskDialog({ showCreateTask, setShowCreateTask, projectId }) {
+export default function CreateTaskDialog({ showCreateTask, setShowCreateTask, projectId, taskToEdit = null }) {
     const dispatch = useDispatch();
     const currentWorkspace = useSelector((state) => state.workspace?.currentWorkspace || null);
     const { currentUser } = useSelector((state) => state.auth);
@@ -15,10 +15,26 @@ export default function CreateTaskDialog({ showCreateTask, setShowCreateTask, pr
     const teamMembers = project?.members || [];
 
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [formData, setFormData] = useState({
+        const [formData, setFormData] = useState({
         title: "", description: "", type: "TASK", status: "TODO",
         priority: "MEDIUM", assigneeId: "", due_date: "",
     });
+
+    useEffect(() => {
+        if (taskToEdit) {
+            setFormData({
+                title: taskToEdit.title || "",
+                description: taskToEdit.description || "",
+                type: taskToEdit.type || "TASK",
+                status: taskToEdit.status || "TODO",
+                priority: taskToEdit.priority || "MEDIUM",
+                assigneeId: taskToEdit.assignee_id || "",
+                due_date: taskToEdit.due_date ? taskToEdit.due_date.split("T")[0] : "",
+            });
+        } else {
+            setFormData({ title: "", description: "", type: "TASK", status: "TODO", priority: "MEDIUM", assigneeId: "", due_date: "" });
+        }
+    }, [taskToEdit, showCreateTask]);
 
     const set = (key, val) => setFormData((prev) => ({ ...prev, [key]: val }));
 
@@ -27,24 +43,39 @@ export default function CreateTaskDialog({ showCreateTask, setShowCreateTask, pr
         setFormData({ title: "", description: "", type: "TASK", status: "TODO", priority: "MEDIUM", assigneeId: "", due_date: "" });
     };
 
-    const handleSubmit = async (e) => {
+        const handleSubmit = async (e) => {
         e.preventDefault();
         if (!projectId || !currentUser) return;
         setIsSubmitting(true);
         try {
-            const { data: task, error } = await supabase
-                .from("tasks")
-                .insert({
-                    project_id: projectId,
-                    title: formData.title,
-                    description: formData.description || null,
-                    type: formData.type,
-                    status: formData.status,
-                    priority: formData.priority,
-                    assignee_id: formData.assigneeId || null,
-                    due_date: formData.due_date || null,
-                })
-                .select().single();
+            const taskData = {
+                title: formData.title,
+                description: formData.description || null,
+                type: formData.type,
+                status: formData.status,
+                priority: formData.priority,
+                assignee_id: formData.assigneeId || null,
+                due_date: formData.due_date || null,
+            };
+
+            let task, error;
+            if (taskToEdit) {
+                const { data, error: err } = await supabase
+                    .from("tasks")
+                    .update(taskData)
+                    .eq("id", taskToEdit.id)
+                    .select().single();
+                task = data;
+                error = err;
+            } else {
+                const { data, error: err } = await supabase
+                    .from("tasks")
+                    .insert({ ...taskData, project_id: projectId })
+                    .select().single();
+                task = data;
+                error = err;
+            }
+
             if (error) throw error;
 
             let assignee = null;
@@ -52,11 +83,17 @@ export default function CreateTaskDialog({ showCreateTask, setShowCreateTask, pr
                 const { data: profile } = await supabase.from("profiles").select("*").eq("id", formData.assigneeId).single();
                 assignee = profile;
             }
-            dispatch(addTask({ ...task, projectId: task.project_id, assigneeId: task.assignee_id, assignee, comments: [] }));
-            toast.success("Task created!");
+
+            if (taskToEdit) {
+                dispatch(updateTask({ ...task, assignee }));
+                toast.success("Task updated!");
+            } else {
+                dispatch(addTask({ ...task, projectId: task.project_id, assigneeId: task.assignee_id, assignee, comments: [] }));
+                toast.success("Task created!");
+            }
             handleClose();
         } catch (err) {
-            toast.error(err.message || "Failed to create task");
+            toast.error(err.message || "Failed to process task");
         } finally {
             setIsSubmitting(false);
         }
@@ -74,7 +111,7 @@ export default function CreateTaskDialog({ showCreateTask, setShowCreateTask, pr
                     {/* Header */}
                     <div className="flex items-start justify-between px-7 pt-6 pb-1">
                         <div>
-                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Create New Task</h2>
+                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{taskToEdit ? "Edit Task" : "Create New Task"}</h2>
                             {project?.name && (
                                 <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">
                                     Project: <span className="text-blue-600 dark:text-blue-400">{project.name}</span>
@@ -169,7 +206,7 @@ export default function CreateTaskDialog({ showCreateTask, setShowCreateTask, pr
                                 Cancel
                             </button>
                             <button type="submit" disabled={isSubmitting || !formData.title.trim()} className="flex items-center gap-2 px-5 py-2 text-sm rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition disabled:opacity-60 disabled:cursor-not-allowed">
-                                {isSubmitting ? <><Loader2 className="size-3.5 animate-spin" /> Creating…</> : "Create Task"}
+                                {isSubmitting ? <><Loader2 className="size-3.5 animate-spin" /> {taskToEdit ? "Saving…" : "Creating…"}</> : (taskToEdit ? "Save Changes" : "Create Task")}
                             </button>
                         </div>
                     </form>

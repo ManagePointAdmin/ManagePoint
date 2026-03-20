@@ -17,6 +17,8 @@ import { loadAuth } from "./features/authSlice";
 import { loadTheme } from "./features/themeSlice";
 import { fetchWorkspaces } from "./features/workspaceSlice";
 
+import NotFoundPage from "./pages/NotFoundPage";
+
 const App = () => {
     const dispatch = useDispatch();
     const { currentUser, isAuthenticated } = useSelector((state) => state.auth);
@@ -55,6 +57,9 @@ const App = () => {
                         <Route path="settings" element={<SettingsPage />} />
                     </Route>
                 </Route>
+
+                {/* Catch-all route for 404 */}
+                <Route path="*" element={<NotFoundPage />} />
             </Routes>
         </>
     );

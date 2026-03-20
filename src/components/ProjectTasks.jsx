@@ -4,7 +4,8 @@ import { useDispatch } from "react-redux";
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { deleteTask, updateTask } from "../features/workspaceSlice";
-import { Bug, CalendarIcon, GitCommit, MessageSquare, Square, Trash, XIcon, Zap, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import CreateTaskDialog from "./CreateTaskDialog";
+import { Bug, CalendarIcon, GitCommit, MessageSquare, Square, Trash, XIcon, Zap, Edit, CheckCircle2, Clock, AlertCircle } from "lucide-react";
 import ConfirmDialog from "./ConfirmDialog";
 
 const typeIcons = {
@@ -45,6 +46,7 @@ const ProjectTasks = ({ tasks }) => {
 
     const [selectedTasks, setSelectedTasks] = useState([]);
     const [confirmOpen, setConfirmOpen] = useState(false);
+    const [taskToEdit, setTaskToEdit] = useState(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
 
     const [filters, setFilters] = useState({
@@ -200,6 +202,7 @@ const ProjectTasks = ({ tasks }) => {
                                 <th className="px-4 py-3 font-semibold">Status</th>
                                 <th className="px-4 py-3 font-semibold">Assignee</th>
                                 <th className="px-4 py-3 font-semibold">Due Date</th>
+                                <th className="px-4 py-3 font-semibold text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -287,6 +290,15 @@ const ProjectTasks = ({ tasks }) => {
                                                     {safeFormat(task.due_date, "dd MMM")}
                                                 </div>
                                             </td>
+                                            <td onClick={(e) => e.stopPropagation()} className="px-4 py-3 text-right">
+                                                <button 
+                                                    onClick={() => setTaskToEdit(task)} 
+                                                    className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-blue-600 dark:text-blue-400 transition"
+                                                    title="Edit Task"
+                                                >
+                                                    <Edit className="size-4" />
+                                                </button>
+                                            </td>
                                         </tr>
                                     );
                                 })
@@ -364,9 +376,17 @@ const ProjectTasks = ({ tasks }) => {
                                             </div>
                                             {task.assignee?.name || "—"}
                                         </div>
-                                        <div className="flex items-center gap-1">
-                                            <CalendarIcon className="size-3.5" />
-                                            {safeFormat(task.due_date, "dd MMM")}
+                                        <div className="flex items-center gap-3">
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); setTaskToEdit(task); }} 
+                                                className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-blue-600 dark:text-blue-400"
+                                            >
+                                                <Edit className="size-3.5" />
+                                            </button>
+                                            <div className="flex items-center gap-1">
+                                                <CalendarIcon className="size-3.5" />
+                                                {safeFormat(task.due_date, "dd MMM")}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -381,6 +401,13 @@ const ProjectTasks = ({ tasks }) => {
                 </div>
             </div>
 
+            <CreateTaskDialog
+                showCreateTask={!!taskToEdit}
+                setShowCreateTask={(val) => { if (!val) setTaskToEdit(null); }}
+                projectId={taskToEdit?.project_id || tasks[0]?.project_id}
+                taskToEdit={taskToEdit}
+            />
+            
             {/* ── Confirm Delete Dialog ── */}
             <ConfirmDialog
                 isOpen={confirmOpen}

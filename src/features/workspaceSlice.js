@@ -3,7 +3,7 @@ import { supabase } from "../lib/supabase";
 
 // ─── Helper: fetch all workspaces for current user with nested data ────────────
 const loadWorkspacesFromDB = async (userId) => {
-    // Get workspace IDs the user belongs to
+    // 1. Get workspace IDs the user belongs to
     const { data: memberships, error: memErr } = await supabase
         .from("workspace_members")
         .select("workspace_id")
@@ -13,7 +13,7 @@ const loadWorkspacesFromDB = async (userId) => {
 
     const workspaceIds = memberships.map((m) => m.workspace_id);
 
-    // Fetch workspaces
+    // 2. Fetch workspaces
     const { data: workspaces, error: wsErr } = await supabase
         .from("workspaces")
         .select("*")
@@ -21,16 +21,30 @@ const loadWorkspacesFromDB = async (userId) => {
 
     if (wsErr || !workspaces?.length) return [];
 
-    // For each workspace, fetch members, projects (with tasks and members)
+    // 3. For each workspace, fetch members, projects (with tasks and members)
     const enriched = await Promise.all(
         workspaces.map(async (ws) => {
-            // Workspace members with profiles
+            // A. Workspace members (Manual Join for Profile)
             const { data: wsMembers } = await supabase
                 .from("workspace_members")
-                .select("id, user_id, role, profiles(*)")
+                .select("id, user_id, role")
                 .eq("workspace_id", ws.id);
 
-            // Projects
+            const wsUserIds = (wsMembers || []).map(m => m.user_id);
+            const { data: wsProfiles } = await supabase
+                .from("profiles")
+                .select("*")
+                .in("id", wsUserIds);
+
+            const wsMembersEnriched = (wsMembers || []).map(m => ({
+                id: m.id,
+                userId: m.user_id,
+                workspaceId: ws.id,
+                role: m.role,
+                user: (wsProfiles || []).find(p => p.id === m.user_id) || null
+            }));
+
+            // B. Projects
             const { data: projects } = await supabase
                 .from("projects")
                 .select("*")
@@ -38,46 +52,56 @@ const loadWorkspacesFromDB = async (userId) => {
 
             const enrichedProjects = await Promise.all(
                 (projects || []).map(async (project) => {
-                    // Project members with profiles
+                    // i. Project members (Manual Join for Profile)
                     const { data: projMembers } = await supabase
                         .from("project_members")
-                        .select("id, user_id, profiles(*)")
+                        .select("id, user_id")
                         .eq("project_id", project.id);
 
-                    // Tasks with assignee profile
+                    const projUserIds = (projMembers || []).map(m => m.user_id);
+                    const { data: projProfiles } = await supabase
+                        .from("profiles")
+                        .select("*")
+                        .in("id", projUserIds);
+
+                    const projMembersEnriched = (projMembers || []).map(m => ({
+                        id: m.id,
+                        userId: m.user_id,
+                        projectId: project.id,
+                        user: (projProfiles || []).find(p => p.id === m.user_id) || null
+                    }));
+
+                    // ii. Tasks (Manual Join for Assignee Profile)
                     const { data: tasks } = await supabase
                         .from("tasks")
-                        .select("*, assignee:profiles!tasks_assignee_id_fkey(*)")
+                        .select("*")
                         .eq("project_id", project.id);
+
+                    const assigneeIds = (tasks || []).map(t => t.assignee_id).filter(Boolean);
+                    const { data: taskProfiles } = await supabase
+                        .from("profiles")
+                        .select("*")
+                        .in("id", assigneeIds);
+
+                    const tasksEnriched = (tasks || []).map(t => ({
+                        ...t,
+                        assigneeId: t.assignee_id,
+                        projectId: t.project_id,
+                        assignee: t.assignee_id ? (taskProfiles || []).find(p => p.id === t.assignee_id) || null : null,
+                        comments: [],
+                    }));
 
                     return {
                         ...project,
-                        members: (projMembers || []).map((m) => ({
-                            id: m.id,
-                            userId: m.user_id,
-                            projectId: project.id,
-                            user: m.profiles,
-                        })),
-                        tasks: (tasks || []).map((t) => ({
-                            ...t,
-                            assigneeId: t.assignee_id,
-                            projectId: t.project_id,
-                            assignee: t.assignee,
-                            comments: [],
-                        })),
+                        members: projMembersEnriched,
+                        tasks: tasksEnriched
                     };
                 })
             );
 
             return {
                 ...ws,
-                members: (wsMembers || []).map((m) => ({
-                    id: m.id,
-                    userId: m.user_id,
-                    workspaceId: ws.id,
-                    role: m.role,
-                    user: m.profiles,
-                })),
+                members: wsMembersEnriched,
                 projects: enrichedProjects,
                 owner: null,
             };
@@ -138,6 +162,23 @@ export const createWorkspace = createAsyncThunk(
             projects: [],
             owner: null,
         };
+    }
+);
+
+export const deleteWorkspace = createAsyncThunk(
+    "workspace/deleteWorkspace",
+    async (workspaceId, { rejectWithValue }) => {
+        try {
+            const { error } = await supabase
+                .from("workspaces")
+                .delete()
+                .eq("id", workspaceId);
+
+            if (error) return rejectWithValue(error.message);
+            return workspaceId;
+        } catch (err) {
+            return rejectWithValue(err.message);
+        }
     }
 );
 
@@ -296,6 +337,21 @@ const workspaceSlice = createSlice({
                 state.workspaces.push(action.payload);
                 state.currentWorkspace = action.payload;
                 localStorage.setItem("currentWorkspaceId", action.payload.id);
+            });
+
+        builder
+            .addCase(deleteWorkspace.fulfilled, (state, action) => {
+                const deletedId = action.payload;
+                state.workspaces = state.workspaces.filter((w) => w.id !== deletedId);
+                if (state.currentWorkspace?.id === deletedId) {
+                    const fallback = state.workspaces[0] || null;
+                    state.currentWorkspace = fallback;
+                    if (fallback) {
+                        localStorage.setItem("currentWorkspaceId", fallback.id);
+                    } else {
+                        localStorage.removeItem("currentWorkspaceId");
+                    }
+                }
             });
     },
 });

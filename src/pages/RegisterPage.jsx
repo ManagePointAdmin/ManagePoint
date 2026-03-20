@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Eye, EyeOff, UserPlus, Loader2, AlertCircle } from "lucide-react";
-import { registerUser, clearError } from "../features/authSlice";
+import { registerUser, loginWithGoogle, clearError } from "../features/authSlice";
 import toast from "react-hot-toast";
 
 /** Returns [score 0-4, label, color] */
@@ -33,6 +33,7 @@ const RegisterPage = () => {
     const [showConfirm, setShowConfirm] = useState(false);
     const [fieldErrors, setFieldErrors] = useState({});
     const [touched, setTouched] = useState({});
+    const [emailSuggestions, setEmailSuggestions] = useState([]);
 
     useEffect(() => {
         if (isAuthenticated) navigate("/dashboard", { replace: true });
@@ -48,17 +49,28 @@ const RegisterPage = () => {
         if (!data.email.trim()) errs.email = "Email is required.";
         else if (!/\S+@\S+\.\S+/.test(data.email)) errs.email = "Enter a valid email.";
         if (!data.password) errs.password = "Password is required.";
-        else if (data.password.length < 6) errs.password = "At least 6 characters required.";
+        else if (data.password.length < 8) errs.password = "At least 8 characters required.";
         if (!data.confirmPassword) errs.confirmPassword = "Please confirm your password.";
         else if (data.password !== data.confirmPassword) errs.confirmPassword = "Passwords do not match.";
         return errs;
     };
 
-    const handleChange = (field, value) => {
+        const handleChange = (field, value) => {
         const updated = { ...formData, [field]: value };
         setFormData(updated);
         if (touched[field]) setFieldErrors(validate(updated));
-    };
+
+        if (field === "email") {
+            const atIndex = value.indexOf("@");
+            if (atIndex !== -1 && !value.slice(atIndex).includes(".")) {
+                const afterAt = value.slice(atIndex + 1);
+                const domains = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com"];
+                setEmailSuggestions(domains.filter(d => d.startsWith(afterAt)));
+            } else {
+                setEmailSuggestions([]);
+            }
+        }
+    };;
 
     const handleBlur = (field) => {
         setTouched((prev) => ({ ...prev, [field]: true }));
@@ -92,50 +104,51 @@ const RegisterPage = () => {
             </div>
 
             <div className="relative w-full max-w-md animate-fade-in-up">
-                <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-white/50 dark:border-zinc-800/50 rounded-2xl shadow-2xl shadow-slate-200/50 dark:shadow-black/30 p-8">
+                <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-white/50 dark:border-zinc-800/50 rounded-2xl shadow-2xl shadow-slate-200/50 dark:shadow-black/30 p-6 md:p-7">
 
-                    {/* Header */}
-                    <div className="mb-7 text-center">
-                        <div className="size-16 mx-auto mb-4 flex items-center justify-center">
-                            <img src="/favicon.ico" alt="ManagePoint" className="size-16 drop-shadow-lg" style={{ imageRendering: 'auto' }} />
+                    {/* Header - Compacted */}
+                    <div className="mb-4 text-center">
+                        <div className="size-12 mx-auto mb-2 flex items-center justify-center">
+                            <img src="/favicon.ico" alt="ManagePoint" className="size-12 drop-shadow-lg" />
                         </div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Create an account</h1>
-                        <p className="text-sm text-gray-500 dark:text-zinc-400">Join your workspace today</p>
+                        <h1 className="text-xl font-bold text-gray-900 dark:text-white-mb-0.5">Create an account</h1>
+                        <p className="text-xs text-gray-500 dark:text-zinc-400">Join your workspace today</p>
                     </div>
 
-                    {/* Form */}
-                    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+                    {/* Form - Compact space-y */}
+                    <form onSubmit={handleSubmit} className="space-y-2.5" noValidate>
                         {/* Name */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">Full name</label>
-                            <input
-                                type="text"
-                                value={formData.name}
-                                onChange={(e) => handleChange("name", e.target.value)}
-                                onBlur={() => handleBlur("name")}
-                                placeholder="John Doe"
-                                autoComplete="name"
-                                className={inputClass("name")}
-                            />
-                            {fieldErrors.name && touched.name && (
-                                <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
-                                    <AlertCircle className="size-3 flex-shrink-0" /> {fieldErrors.name}
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Email */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">Email address</label>
-                            <input
-                                type="email"
-                                value={formData.email}
-                                onChange={(e) => handleChange("email", e.target.value)}
-                                onBlur={() => handleBlur("email")}
-                                placeholder="you@example.com"
-                                autoComplete="email"
-                                className={inputClass("email")}
-                            />
+                                                        <div className="relative">
+                                <input
+                                    type="email"
+                                    value={formData.email}
+                                    onChange={(e) => handleChange("email", e.target.value)}
+                                    onBlur={() => { handleBlur("email"); setTimeout(() => setEmailSuggestions([]), 200); }}
+                                    placeholder="you@example.com"
+                                    autoComplete="email"
+                                    className={`${inputClass("email")} relative z-10`}
+                                />
+                                {emailSuggestions.length > 0 && (
+                                    <ul className="absolute z-20 w-full bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl mt-1 shadow-lg py-1 max-h-40 overflow-y-auto">
+                                        {emailSuggestions.map((dom) => (
+                                            <li 
+                                                key={dom} 
+                                                onClick={() => {
+                                                    const atIndex = formData.email.indexOf('@');
+                                                    const base = formData.email.slice(0, atIndex + 1);
+                                                    setFormData({ ...formData, email: base + dom });
+                                                    setEmailSuggestions([]);
+                                                }}
+                                                className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-zinc-700 cursor-pointer text-sm text-gray-700 dark:text-zinc-300 transition-colors"
+                                            >
+                                                {formData.email.slice(0, formData.email.indexOf('@') + 1)}{dom}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
                             {fieldErrors.email && touched.email && (
                                 <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
                                     <AlertCircle className="size-3 flex-shrink-0" /> {fieldErrors.email}
@@ -152,7 +165,7 @@ const RegisterPage = () => {
                                     value={formData.password}
                                     onChange={(e) => handleChange("password", e.target.value)}
                                     onBlur={() => handleBlur("password")}
-                                    placeholder="Min. 6 characters"
+                                    placeholder="Min. 8 characters"
                                     autoComplete="new-password"
                                     className={`${inputClass("password")} pr-11`}
                                 />
@@ -160,19 +173,32 @@ const RegisterPage = () => {
                                     {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                                 </button>
                             </div>
-                            {/* Password strength meter */}
+                            
+                            {/* Password Requirements Checklist */}
                             {formData.password && (
-                                <div className="mt-2">
-                                    <div className="flex gap-1 mb-1">
-                                        {[1, 2, 3, 4].map((i) => (
-                                            <div key={i} className={`strength-bar flex-1 ${i <= pwScore ? pwColor : "bg-gray-200 dark:bg-zinc-700"}`} />
-                                        ))}
-                                    </div>
-                                    <p className="text-xs text-zinc-400 dark:text-zinc-500">
-                                        Strength: <span className={`font-medium ${pwColor.replace("bg-", "text-")}`}>{pwLabel || "—"}</span>
-                                    </p>
+                                <div className="mt-1.5 p-1.5 bg-gray-50 dark:bg-zinc-800/50 rounded-xl border border-gray-100 dark:border-zinc-800 space-y-1">
+                                    <p className="text-xs font-semibold text-gray-600 dark:text-zinc-400 mb-0.5">Password must contain:</p>
+                                    <ul className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+                                        <li className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${formData.password.length >= 8 ? "text-green-600 dark:text-green-400" : "text-gray-400 dark:text-zinc-500"}`}>
+                                            <div className={`size-1.5 rounded-full ${formData.password.length >= 8 ? "bg-green-600 dark:bg-green-400" : "bg-gray-400"}`} />
+                                            8+ characters
+                                        </li>
+                                        <li className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${/[A-Z]/.test(formData.password) ? "text-green-600 dark:text-green-400" : "text-gray-400 dark:text-zinc-500"}`}>
+                                            <div className={`size-1.5 rounded-full ${/[A-Z]/.test(formData.password) ? "bg-green-600 dark:bg-green-400" : "bg-gray-400"}`} />
+                                            Uppercase letter
+                                        </li>
+                                        <li className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${/[0-9]/.test(formData.password) ? "text-green-600 dark:text-green-400" : "text-gray-400 dark:text-zinc-500"}`}>
+                                            <div className={`size-1.5 rounded-full ${/[0-9]/.test(formData.password) ? "bg-green-600 dark:bg-green-400" : "bg-gray-400"}`} />
+                                            Number
+                                        </li>
+                                        <li className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${/[^A-Za-z0-9]/.test(formData.password) ? "text-green-600 dark:text-green-400" : "text-gray-400 dark:text-zinc-500"}`}>
+                                            <div className={`size-1.5 rounded-full ${/[^A-Za-z0-9]/.test(formData.password) ? "bg-green-600 dark:bg-green-400" : "bg-gray-400"}`} />
+                                            Special char
+                                        </li>
+                                    </ul>
                                 </div>
                             )}
+                            
                             {fieldErrors.password && touched.password && (
                                 <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
                                     <AlertCircle className="size-3 flex-shrink-0" /> {fieldErrors.password}
@@ -208,7 +234,7 @@ const RegisterPage = () => {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white text-sm font-semibold shadow-lg shadow-indigo-500/25 transition-all duration-200 mt-2 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-70 disabled:cursor-not-allowed disabled:translate-y-0"
+                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white text-sm font-semibold shadow-lg shadow-indigo-500/25 transition-all duration-200 mt-1 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-70 disabled:cursor-not-allowed disabled:translate-y-0"
                         >
                             {loading ? (
                                 <><Loader2 className="size-4 animate-spin" /> Creating account…</>
@@ -219,11 +245,27 @@ const RegisterPage = () => {
                     </form>
 
                     {/* Divider */}
-                    <div className="my-6 flex items-center gap-4">
-                        <div className="flex-1 h-px bg-gray-200 dark:bg-zinc-700" />
-                        <span className="text-xs text-gray-400 dark:text-zinc-500">or</span>
-                        <div className="flex-1 h-px bg-gray-200 dark:bg-zinc-700" />
-                    </div>
+                                         {/* Divider */}
+                     <div className="my-4 flex items-center gap-4">
+                         <div className="flex-1 h-px bg-gray-200 dark:bg-zinc-700" />
+                         <span className="text-xs text-gray-400 dark:text-zinc-500">or</span>
+                         <div className="flex-1 h-px bg-gray-200 dark:bg-zinc-700" />
+                     </div>
+
+                     {/* Google Auth */}
+                     <button
+                         type="button"
+                         onClick={() => dispatch(loginWithGoogle())}
+                         className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-gray-200 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-800 text-sm font-medium text-gray-700 dark:text-zinc-300 transition mb-3"
+                     >
+                         <svg className="size-4" viewBox="0 0 24 24">
+                             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                             <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05" />
+                             <path d="M12 5.38c1.62 0 3.07.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                         </svg>
+                         Connect with Google
+                     </button>
 
                     <p className="text-center text-sm text-gray-500 dark:text-zinc-400">
                         Already have an account?{" "}
